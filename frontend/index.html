@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generador de video 360 — Vehículos</title>
+<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+<style>
+  :root {
+    --bg: #f6f5f2;
+    --panel: #ffffff;
+    --border: #dedad2;
+    --text: #26251f;
+    --text-muted: #6b685f;
+    --accent: #0f6e56;
+    --accent-fondo: #e1f5ee;
+    --warn: #854f0b;
+    --warn-fondo: #faeeda;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header p { margin: 4px 0 0; color: var(--text-muted); font-size: 13px; }
+
+  main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .panel h2 {
+    margin: 0 0 14px;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-muted);
+  }
+
+  label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+
+  .id-row { display: flex; gap: 12px; }
+  .id-row input {
+    flex: 1;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+  }
+
+  .angulos {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .angulo-slot {
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s;
+  }
+  .angulo-slot:hover { border-color: var(--accent); }
+  .angulo-slot.lleno { border-style: solid; border-color: var(--accent); background: var(--accent-fondo); }
+  .angulo-slot .nombre { font-weight: 600; font-size: 13px; }
+  .angulo-slot .estado { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .angulo-slot input[type="file"] { display: none; }
+
+  .config-fila { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .config-fila label { flex: 0 0 160px; margin: 0; }
+  .config-fila input[type="range"] { flex: 1; }
+  .config-fila select { flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 6px; }
+  .config-valor { width: 48px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 13px; }
+
+  button {
+    font: inherit;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    cursor: pointer;
+  }
+  .btn-primario { background: var(--accent); color: #fff; }
+  .btn-primario:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
+  .btn-secundario { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+
+  .estado-job {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--warn-fondo);
+    color: var(--warn);
+  }
+  .estado-job.listo { background: var(--accent-fondo); color: var(--accent); }
+
+  .revision { display: none; }
+  .revision.visible { display: block; }
+  model-viewer { width: 100%; height: 320px; border-radius: 8px; background: #efece5; }
+  video { width: 100%; border-radius: 8px; margin-top: 12px; }
+
+  .acciones-revision { display: flex; gap: 12px; margin-top: 16px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Generador de video 360 — vehículos usados</h1>
+  <p>Captura 4 fotos, ajusta el giro y publica el video en el sitio web.</p>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Vehículo</h2>
+    <div class="id-row">
+      <div style="flex:1">
+        <label for="vehiculoId">ID / placa del vehículo</label>
+        <input id="vehiculoId" placeholder="ej. VU-2026-0453">
+      </div>
+      <div style="flex:1">
+        <label for="fotografoId">Fotógrafo</label>
+        <input id="fotografoId" placeholder="tu nombre o usuario">
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Captura — 4 fotos</h2>
+    <div class="angulos" id="angulos"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Configuración del giro</h2>
+    <div class="config-fila">
+      <label for="velocidad">Velocidad de rotación</label>
+      <input type="range" id="velocidad" min="4" max="16" value="8">
+      <span class="config-valor" id="velocidadValor">8 s</span>
+    </div>
+    <div class="config-fila">
+      <label for="fondo">Fondo artístico</label>
+      <select id="fondo">
+        <option value="estudio_gris">Estudio gris</option>
+        <option value="estudio_negro">Estudio negro</option>
+        <option value="marca_cofino">Fondo de marca</option>
+      </select>
+    </div>
+    <div class="config-fila">
+      <label for="resolucion">Resolución de salida</label>
+      <select id="resolucion">
+        <option value="1920x1080">1080p</option>
+        <option value="3840x2160">4K</option>
+      </select>
+    </div>
+    <button class="btn-primario" id="btnProcesar" disabled>Generar video</button>
+    <span class="estado-job" id="estadoJob" style="display:none"></span>
+  </section>
+
+  <section class="panel revision" id="panelRevision">
+    <h2>Revisión</h2>
+    <model-viewer id="visor3d" camera-controls auto-rotate></model-viewer>
+    <video id="videoPreview" controls></video>
+    <div class="acciones-revision">
+      <button class="btn-primario" id="btnAprobar">Aprobar y publicar</button>
+      <select id="anguloRepetir">
+        <option value="frente">Repetir: frente</option>
+        <option value="lateral_derecho">Repetir: lateral derecho</option>
+        <option value="trasera">Repetir: trasera</option>
+        <option value="lateral_izquierdo">Repetir: lateral izquierdo</option>
+      </select>
+      <button class="btn-secundario" id="btnRepetir">Subir nueva toma</button>
+    </div>
+  </section>
+</main>
+
+<script>
+const ANGULOS = [
+  { id: "frente", nombre: "Frente" },
+  { id: "lateral_derecho", nombre: "Lateral derecho" },
+  { id: "trasera", nombre: "Trasera" },
+  { id: "lateral_izquierdo", nombre: "Lateral izquierdo" },
+];
+
+const archivos = {};
+let jobIdActual = null;
+let pollingTimer = null;
+
+const contenedorAngulos = document.getElementById("angulos");
+ANGULOS.forEach(({ id, nombre }) => {
+  const slot = document.createElement("label");
+  slot.className = "angulo-slot";
+  slot.id = `slot-${id}`;
+  slot.innerHTML = `
+    <div class="nombre">${nombre}</div>
+    <div class="estado">Toca para subir foto</div>
+    <input type="file" accept="image/*" capture="environment" data-angulo="${id}">
+  `;
+  contenedorAngulos.appendChild(slot);
+});
+
+contenedorAngulos.addEventListener("change", (e) => {
+  const input = e.target;
+  if (!input.matches("input[type=file]")) return;
+  const angulo = input.dataset.angulo;
+  const archivo = input.files[0];
+  if (!archivo) return;
+
+  archivos[angulo] = archivo;
+  const slot = document.getElementById(`slot-${angulo}`);
+  slot.classList.add("lleno");
+  slot.querySelector(".estado").textContent = archivo.name;
+
+  actualizarBotonProcesar();
+});
+
+function actualizarBotonProcesar() {
+  const completo = ANGULOS.every(({ id }) => archivos[id]);
+  document.getElementById("btnProcesar").disabled = !completo;
+}
+
+const sliderVelocidad = document.getElementById("velocidad");
+sliderVelocidad.addEventListener("input", () => {
+  document.getElementById("velocidadValor").textContent = `${sliderVelocidad.value} s`;
+});
+
+document.getElementById("btnProcesar").addEventListener("click", async () => {
+  const vehiculoId = document.getElementById("vehiculoId").value.trim();
+  if (!vehiculoId) {
+    alert("Ingresa el ID o placa del vehículo.");
+    return;
+  }
+
+  const form = new FormData();
+  ANGULOS.forEach(({ id }) => form.append(id, archivos[id]));
+  form.append("fotografoId", document.getElementById("fotografoId").value.trim());
+  form.append("velocidadRotacionSeg", sliderVelocidad.value);
+  form.append("fondo", document.getElementById("fondo").value);
+  form.append("resolucion", document.getElementById("resolucion").value);
+
+  const respuesta = await fetch(`/api/vehiculos/${encodeURIComponent(vehiculoId)}/fotos`, {
+    method: "POST",
+    body: form,
+  });
+
+  if (!respuesta.ok) {
+    const { error } = await respuesta.json();
+    alert(error ?? "No se pudo iniciar el procesamiento.");
+    return;
+  }
+
+  const { jobId } = await respuesta.json();
+  jobIdActual = jobId;
+  document.getElementById("btnProcesar").disabled = true;
+  mostrarEstado("procesando");
+  iniciarPolling(jobId);
+});
+
+function mostrarEstado(estado) {
+  const el = document.getElementById("estadoJob");
+  el.style.display = "inline-flex";
+  el.classList.toggle("listo", estado === "en_revision" || estado === "publicado");
+
+  const etiquetas = {
+    capturado: "En cola...",
+    fondo_removido: "Quitando fondo...",
+    reconstruido_3d: "Reconstruyendo modelo 3D...",
+    renderizado: "Renderizando el giro...",
+    en_revision: "Listo para revisar",
+    publicado: "Publicado",
+    error: "Ocurrió un error, intenta de nuevo",
+  };
+  el.textContent = etiquetas[estado] ?? estado;
+}
+
+function iniciarPolling(jobId) {
+  clearInterval(pollingTimer);
+  pollingTimer = setInterval(async () => {
+    const respuesta = await fetch(`/api/jobs/${jobId}`);
+    if (!respuesta.ok) return;
+    const job = await respuesta.json();
+    mostrarEstado(job.estado);
+
+    if (job.estado === "en_revision") {
+      clearInterval(pollingTimer);
+      mostrarRevision(job);
+    }
+    if (job.estado === "error") {
+      clearInterval(pollingTimer);
+    }
+  }, 4000);
+}
+
+function mostrarRevision(job) {
+  document.getElementById("panelRevision").classList.add("visible");
+  document.getElementById("visor3d").setAttribute("src", job.modelo3dUrl);
+  document.getElementById("videoPreview").setAttribute("src", job.videoFinalUrl);
+}
+
+document.getElementById("btnAprobar").addEventListener("click", async () => {
+  await fetch(`/api/jobs/${jobIdActual}/aprobar`, { method: "POST" });
+  mostrarEstado("publicado");
+});
+
+document.getElementById("btnRepetir").addEventListener("click", () => {
+  const angulo = document.getElementById("anguloRepetir").value;
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.capture = "environment";
+  input.onchange = async () => {
+    const form = new FormData();
+    form.append("foto", input.files[0]);
+    await fetch(`/api/jobs/${jobIdActual}/repetir/${angulo}`, {
+      method: "POST",
+      body: form,
+    });
+    document.getElementById("panelRevision").classList.remove("visible");
+    mostrarEstado("capturado");
+    iniciarPolling(jobIdActual);
+  };
+  input.click();
+});
+</script>
+</body>
+</html>
