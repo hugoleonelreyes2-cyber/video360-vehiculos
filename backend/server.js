@@ -5,6 +5,18 @@ import { pipelineQueue } from "./queue.js";
 import { getJob, createJob, updateJob } from "./lib/jobStore.js";
 
 const app = express();
+
+// Permite que el frontend publicado en GitHub Pages (otro dominio) llame
+// a esta API. Si más adelante usas un dominio propio para el backend,
+// puedes restringir el origen en vez de usar "*".
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.sendStatus(200);
+  next();
+});
+
 app.use(express.json());
 app.use(express.static("../frontend"));
 
