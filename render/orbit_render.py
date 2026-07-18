@@ -137,7 +137,7 @@ def animar_giro(pivote, total_frames):
 
 def configurar_render(ancho, alto, carpeta_salida):
     scene = bpy.context.scene
-    scene.render.engine = "CYCLES"
+    scene.render.engine = "BLENDER_EEVEE_NEXT"
     scene.render.resolution_x = ancho
     scene.render.resolution_y = alto
     scene.render.image_settings.file_format = "PNG"
