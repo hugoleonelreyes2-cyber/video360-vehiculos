@@ -1,23 +1,28 @@
-// Implementación de referencia. En producción, reemplazar por Postgres o
-// Firestore -- la interfaz (createJob/getJob/updateJob) se mantiene igual
-// para no tocar el resto del código.
+// Guarda los jobs en Redis (el mismo Redis que ya usamos para la cola).
+// Esto es necesario porque la API y el worker corren como procesos
+// separados -- guardarlos solo en memoria (como en una primera versión de
+// este archivo) hace que el worker no pueda ver los jobs que crea la API.
+// En producción, si el volumen crece mucho, se puede migrar a Postgres,
+// pero para 500 vehículos/mes Redis es más que suficiente.
+import { connection } from "../queue.js";
 
-const jobs = new Map();
+const PREFIJO = "job:";
 
 export async function createJob(data) {
   const job = { intentosPorAngulo: {}, ...data };
-  jobs.set(job.jobId, job);
+  await connection.set(PREFIJO + job.jobId, JSON.stringify(job));
   return job;
 }
 
 export async function getJob(jobId) {
-  return jobs.get(jobId) ?? null;
+  const bruto = await connection.get(PREFIJO + jobId);
+  return bruto ? JSON.parse(bruto) : null;
 }
 
 export async function updateJob(jobId, patch) {
-  const job = jobs.get(jobId);
+  const job = await getJob(jobId);
   if (!job) throw new Error(`job ${jobId} no existe`);
   const actualizado = { ...job, ...patch };
-  jobs.set(jobId, actualizado);
+  await connection.set(PREFIJO + jobId, JSON.stringify(actualizado));
   return actualizado;
 }
