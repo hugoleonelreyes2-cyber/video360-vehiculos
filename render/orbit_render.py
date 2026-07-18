@@ -119,6 +119,12 @@ def animar_giro(pivote, total_frames):
     scene.frame_start = 0
     scene.frame_end = total_frames - 1
 
+    # Fijamos la interpolación por defecto ANTES de insertar los keyframes,
+    # en vez de recorrer las fcurves después -- la API de fcurves cambió
+    # en Blender 5.x (sistema de "layered actions") y ya no es accesible
+    # de la forma directa que usaban versiones anteriores.
+    bpy.context.preferences.edit.keyframe_new_interpolation_type = "LINEAR"
+
     angulo_inicial = math.radians(CALIBRACION_ANGULO_INICIAL)
     pivote.rotation_euler = (0, 0, angulo_inicial)
     pivote.keyframe_insert(data_path="rotation_euler", frame=0)
@@ -127,10 +133,6 @@ def animar_giro(pivote, total_frames):
     # para que, al reproducir en loop, el regreso al frente sea continuo.
     pivote.rotation_euler = (0, 0, angulo_inicial + 2 * math.pi)
     pivote.keyframe_insert(data_path="rotation_euler", frame=total_frames)
-
-    for fc in pivote.animation_data.action.fcurves:
-        for kp in fc.keyframe_points:
-            kp.interpolation = "LINEAR"
 
 
 def configurar_render(ancho, alto, carpeta_salida):
