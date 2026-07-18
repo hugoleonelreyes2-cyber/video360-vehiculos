@@ -139,8 +139,13 @@ def configurar_render(ancho, alto, carpeta_salida):
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
     scene.cycles.device = "CPU"
-    scene.cycles.samples = 32  # bajo a propósito: velocidad sobre fotorrealismo total
-    scene.cycles.use_denoising = True
+    scene.cycles.samples = 8  # bajado a propósito para diagnóstico de velocidad
+    scene.cycles.use_denoising = False
+    scene.cycles.max_bounces = 2
+    scene.cycles.diffuse_bounces = 1
+    scene.cycles.glossy_bounces = 1
+    scene.cycles.transmission_bounces = 1
+    scene.render.resolution_percentage = 100
     scene.render.resolution_x = ancho
     scene.render.resolution_y = alto
     scene.render.image_settings.file_format = "PNG"
@@ -151,18 +156,34 @@ def main():
     args = parsear_argumentos()
     os.makedirs(args.salida, exist_ok=True)
 
+    print(f"[DIAG] iniciando, frames={args.frames}", flush=True)
     limpiar_escena()
+    print("[DIAG] escena limpiada", flush=True)
+
     objetos = importar_vehiculo(args.glb)
+    print(f"[DIAG] vehículo importado: {len(objetos)} objetos", flush=True)
+
     centro, dimension_mayor = calcular_centro_y_radio(objetos)
     radio = dimension_mayor / 2
+    print(f"[DIAG] centro={centro} dimension_mayor={dimension_mayor} radio={radio}", flush=True)
 
     configurar_fondo(args.fondo)
+    print("[DIAG] fondo configurado", flush=True)
+
     configurar_iluminacion(centro, radio)
+    print("[DIAG] iluminación configurada", flush=True)
+
     pivote = crear_camara_orbital(centro, radio)
+    print("[DIAG] cámara y pivote creados", flush=True)
+
     animar_giro(pivote, args.frames)
+    print("[DIAG] animación de giro creada", flush=True)
+
     configurar_render(args.ancho, args.alto, args.salida)
+    print("[DIAG] render configurado, arrancando bpy.ops.render.render...", flush=True)
 
     bpy.ops.render.render(animation=True)
+    print("[DIAG] render terminado", flush=True)
 
 
 if __name__ == "__main__":
