@@ -50,7 +50,12 @@ const worker = new Worker(
       throw err;
     }
   },
-  { connection, concurrency: 3 } // 3 vehículos en paralelo; ajustar según capacidad del worker de render
+  {
+    connection,
+    concurrency: 1, // este servidor tiene 2 vCPU -- Blender ya usa ambos por sí solo, más concurrencia solo reparte el mismo CPU y hace todo más lento
+    lockDuration: 60 * 60 * 1000, // 1 hora -- el render puede tardar varios minutos sin "avisar" que sigue vivo; el valor por defecto (30s) hacía que BullMQ diera el job por muerto y lo reintentara mientras el original seguía corriendo
+    stalledInterval: 60 * 60 * 1000,
+  }
 );
 
 worker.on("failed", (job, err) => {
