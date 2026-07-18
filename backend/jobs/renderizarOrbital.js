@@ -5,9 +5,14 @@ import { v4 as uuid } from "uuid";
 import fetch from "node-fetch";
 
 const FPS = 30;
+export const ANGULOS_A_RENDERIZAR = 36; // uno cada 10° -- ffmpeg rellena el resto sosteniendo frames
 
 // Descarga el .glb, corre Blender headless con orbit_render.py y devuelve
 // la carpeta con los frames renderizados (PNG con fondo ya compuesto).
+// Renderiza solo ANGULOS_A_RENDERIZAR posiciones fijas (no un frame por
+// cada fotograma del video final) -- eso sería demasiado lento en CPU.
+// El paso de ensamblado (ensamblarVideo.js) se encarga de estirar esos
+// frames a la duración configurada.
 export async function renderizarOrbital({ modelo3dUrl, config }) {
   const tmpDir = process.env.RENDER_TMP_DIR ?? "/tmp/video360-render";
   const carpetaJob = path.join(tmpDir, uuid());
@@ -17,7 +22,6 @@ export async function renderizarOrbital({ modelo3dUrl, config }) {
   await descargarArchivo(modelo3dUrl, rutaGlb);
 
   const [ancho, alto] = (config.resolucion ?? "1920x1080").split("x").map(Number);
-  const totalFrames = Math.round((config.velocidadRotacionSeg ?? 8) * FPS);
 
   await new Promise((resolve, reject) => {
     const args = [
@@ -27,7 +31,7 @@ export async function renderizarOrbital({ modelo3dUrl, config }) {
       "--",
       `--glb=${rutaGlb}`,
       `--salida=${carpetaJob}`,
-      `--frames=${totalFrames}`,
+      `--frames=${ANGULOS_A_RENDERIZAR}`,
       `--ancho=${ancho}`,
       `--alto=${alto}`,
       `--fondo=${config.fondo ?? "estudio_gris"}`,
