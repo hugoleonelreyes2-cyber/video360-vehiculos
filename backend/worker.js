@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { Worker } from "bullmq";
 import { connection } from "./queue.js";
 import { getJob, updateJob } from "./lib/jobStore.js";
